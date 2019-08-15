@@ -85,7 +85,7 @@ defineReplace(getBaseDirectory) {
     return("")
 }
 
-PROJECT_ROOT = $$getBaseDirectory()
+PROJECT_ROOT = $$combine($$getBaseDirectory(), "/../")
 PROJECT_ROOT = $$replace(PROJECT_ROOT, "\\\\", "/")
 
 PUBLIC_DIRECTORY = $$join($$list($$PROJECT_ROOT, "public", $$TARGET_SPEC), "/")
@@ -104,7 +104,7 @@ LIBS += $$combine(-L, $$PUBLIC_BIN)
 CONFIG += c++11
 CONFIG += console
 
-QMAKE_CXXFLAGS += -Wall 
+QMAKE_CXXFLAGS += -Wall -Werror
   
 win32: DEFINES += WIN32
 unix:  DEFINES += LINUX

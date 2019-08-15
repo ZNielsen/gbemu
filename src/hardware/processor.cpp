@@ -127,6 +127,7 @@ Processor::Operation *Processor::lookup(uint16_t & pc, uint8_t opcode)
     uint8_t prefix = 0x00;
     if (CB_PREFIX == opcode) {
         prefix = opcode;
+        (void)prefix;
         
         opcode = m_memory.read(pc++);
     }

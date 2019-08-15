@@ -167,10 +167,6 @@ void MemoryController::MemoryMappedIO::write(uint16_t address, uint8_t value)
     }
 
     case SERIAL_TX_CONTROL_ADDRESS: {
-        if (value & 0x80) {
-            char c = m_parent.read(SERIAL_TX_DATA_ADDRESS);
-            LOG("%c", c);
-        }
         break;
     }
 

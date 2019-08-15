@@ -403,7 +403,9 @@ ColorArray GPU::constrain(const vector<ColorArray> & display) const
 {
     uint16_t index = 0;
 
+#ifdef DEBUG
     uint16_t yTemp = m_y, xTemp = m_x;
+#endif
     
     // We have an array of the whole map, so now we need to build a flat array of the
     // pixels that we need to display on screen.  The x and y scroll registers determine
