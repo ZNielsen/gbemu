@@ -37,6 +37,8 @@ private:
         MBC_1R   = 0x02,
         MBC_1RB  = 0x03,
         MBC_2    = 0x05,
+
+        MBC_3RB  = 0x13,
     };
     enum BankMode { MBC_ROM, MBC_RAM };
     
@@ -61,6 +63,10 @@ private:
     
     void writeROM(uint16_t address, uint8_t value);
     void writeRAM(uint16_t address, uint8_t value);
+
+    void writeMBC1(uint16_t address, uint8_t value);
+    void writeMBC2(uint16_t address, uint8_t value);
+    void writeMBC3(uint16_t address, uint8_t value);
 };
 
 #endif

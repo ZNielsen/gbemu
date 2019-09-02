@@ -100,6 +100,17 @@ void Cartridge::write(uint16_t address, uint8_t value)
 
 void Cartridge::writeROM(uint16_t address, uint8_t value)
 {
+    switch (m_info.mbc.type) {
+    case MBC_1:   writeMBC1(address, value); break;
+
+    case MBC_3RB: writeMBC3(address, value); break;
+
+    default: assert(0); break;
+    }
+}
+
+void Cartridge::writeMBC1(uint16_t address, uint8_t value)
+{
     if (address <= 0x1FFF) {
         m_info.mbc.ramEn = ((value & 0x0F) == 0x0A);
     } else if (address <= 0x3FFF) {
@@ -107,6 +118,28 @@ void Cartridge::writeROM(uint16_t address, uint8_t value)
         if ((0x00 == bank) || (0x20 == bank) || (0x40 == bank) || (0x60 == bank)) {
             bank |= 0x01;
         }
+
+        m_info.mbc.bank = ((m_info.mbc.bank & 0xE0) | bank);
+    } else if (address <= 0x5FFF) {
+        if (MBC_ROM == m_info.mbc.mode) {
+            m_info.mbc.bank = (((value << 5) & 0xE0) | m_info.mbc.bank);
+        } else {
+            m_info.mbc.bank = (value & 0x07);
+        }
+    } else if (address <= 0x7FFF) {
+        m_info.mbc.mode = (0x00 == value) ? MBC_ROM : MBC_RAM;
+    } else {
+        assert(0);
+    }
+}
+
+void Cartridge::writeMBC3(uint16_t address, uint8_t value)
+{
+    if (address <= 0x1FFF) {
+        m_info.mbc.ramEn = ((value & 0x0F) == 0x0A);
+    } else if (address <= 0x3FFF) {
+        uint8_t bank = (value & 0x1F);
+        if (0x00 == bank) { bank |= 0x01; }
 
         m_info.mbc.bank = ((m_info.mbc.bank & 0xE0) | bank);
     } else if (address <= 0x5FFF) {
