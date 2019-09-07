@@ -92,6 +92,8 @@ uint8_t & Cartridge::read(uint16_t address)
 void Cartridge::write(uint16_t address, uint8_t value)
 {
     if (address < (ROM_0_OFFSET + ROM_0_SIZE)) {
+        LOG("ROM write: 0x%04x ==> 0x%02x", address, value);
+        
         writeROM(address, value);
     } else if ((address >= EXT_RAM_OFFSET) && (address < (EXT_RAM_OFFSET + EXT_RAM_SIZE))) {
         writeRAM(address, value);

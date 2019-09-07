@@ -333,6 +333,7 @@ ColorArray GPU::toRGB(const uint8_t & pal, const Tile & tile, bool white) const
     return colors;
 }
 
+#if 0
 ColorArray GPU::lookup(TileMapIndex mIndex, TileSetIndex bg, TileSetIndex win)
 {
     ColorArray colors(PIXELS_PER_COL * PIXELS_PER_ROW);
@@ -362,10 +363,9 @@ ColorArray GPU::lookup(TileMapIndex mIndex, TileSetIndex bg, TileSetIndex win)
             const Tile & tile = (isWindowEnabled()
                                  && (col >= m_winX) && (col < PIXELS_PER_COL)
                                  && (row >= m_winY) && (row < PIXELS_PER_ROW)) ?
-                // lookup(mIndex, win, col, row) :
-                lookup(mIndex, win, j % TILE_MAP_COLUMNS, i % TILE_MAP_ROWS) :
+                lookup(mIndex, win, j - xTileOffset, i - yTileOffset) :
                 lookup(mIndex, bg, j % TILE_MAP_COLUMNS, i % TILE_MAP_ROWS);
-
+            
             // Lookup the tile that we want and translate it to RGB.
             ColorArray rgb = toRGB(m_palette, tile, true);
 
@@ -382,6 +382,44 @@ ColorArray GPU::lookup(TileMapIndex mIndex, TileSetIndex bg, TileSetIndex win)
 
                     colors[index] = std::move(rgb[k]);
                 }
+            }
+        }
+    }
+
+    drawSprites(colors);
+    return colors;
+}
+#endif
+
+ColorArray GPU::lookup(TileMapIndex mIndex, TileSetIndex bg, TileSetIndex win)
+{
+    static const uint16_t width = 512;
+    
+    ColorArray colors(2 * (TILE_MAP_ROWS * TILE_PIXELS_PER_ROW) * (TILE_MAP_COLUMNS * TILE_PIXELS_PER_COL));
+
+    for (uint16_t i = 0; i < TILE_MAP_ROWS; i++) {
+        for (uint16_t j = 0; j < TILE_MAP_COLUMNS; j++) {
+            // Each tile is 8x8, so we first need to figure out the coordinates
+            // of the top left corner of the tile we are translating.
+            uint16_t xOffset = j * TILE_PIXELS_PER_ROW;
+            uint16_t yOffset = i * TILE_PIXELS_PER_COL;
+
+            // Lookup the tile that we want and translate it to RGB.
+            //ColorArray background = toRGB(m_palette, lookup(mIndex, bg, j, i), true);
+            ColorArray background = toRGB(m_palette, lookup(TILEMAP_0, bg, j, i), true);
+            ColorArray window     = toRGB(m_palette, lookup(TILEMAP_1, bg, j, i), true);
+
+            // Loop through each pixel in the tile that we just translated, and stick
+            // it in to the screen RGB array at the appropriate pixel location.
+            for (size_t k = 0; k < background.size(); k++) {
+                // These are 8x8 chunks, so we need to calculate a new x, y each time
+                // we go through this loop and have a new pixel.
+                uint16_t x = xOffset + (k % TILE_PIXELS_PER_ROW);
+                uint16_t y = yOffset + (k / TILE_PIXELS_PER_ROW);
+
+                uint32_t index = (y * width) + x;
+                colors[index] = std::move(background[k]);
+                colors[index + 256] = std::move(window[k]);
             }
         }
     }
@@ -444,11 +482,10 @@ void GPU::drawSprites(ColorArray & display)
     vector<shared_ptr<SpriteData>> enabled;
 
     for (shared_ptr<SpriteData> & data : m_sprites) {
-        if (!data) { continue; }
+        if (data && data->isVisible()) {
+            data->height = (m_control & SPRITE_SIZE) ? SPRITE_HEIGHT_EXTENDED : SPRITE_HEIGHT_NORMAL;
 
-        data->height = (m_control & SPRITE_SIZE) ? SPRITE_HEIGHT_EXTENDED : SPRITE_HEIGHT_NORMAL;
-        if (data->isVisible()) {
-            enabled.push_back(data);
+             enabled.push_back(data);
         }
     }
 
@@ -496,12 +533,6 @@ uint8_t GPU::SpriteData::palette() const
 
 bool GPU::SpriteData::isVisible() const
 {
-    if ((0 == this->x) || (0 == this->y)) { return false; }
-
-    if ((this->x >= PIXELS_PER_ROW + 8) || (this->y >= PIXELS_PER_COL + 16)) {
-        return false;
-    }
-
     return true;
 }
 
@@ -511,15 +542,12 @@ void GPU::SpriteData::render(GPU & gpu, ColorArray & display, uint8_t dPalette)
 
     for (size_t i = 0; i < this->colors.size(); i++) {
         int xOffset = (i % SPRITE_WIDTH) - 8;
-        if ((this->x + xOffset) < 0) { continue; }
-
         int yOffset = (i / SPRITE_WIDTH) - 16;
-        if ((this->y + yOffset) < 0) { continue; }
 
-        uint8_t x = this->x + xOffset;
-        uint8_t y = this->y + yOffset;
+        uint16_t x = this->x + xOffset + gpu.m_x;
+        uint16_t y = this->y + yOffset + gpu.m_y;
 
-        uint16_t index = (y * PIXELS_PER_ROW) + x;
+        uint16_t index = (y * 512) + x;
         if (index >= int(display.size())) {
             continue;
         }
@@ -542,6 +570,7 @@ void GPU::SpriteData::render(GPU & gpu, ColorArray & display, uint8_t dPalette)
         }
 
         display[index] = color;
+        display[index + 256] = color;
     }
 }
 

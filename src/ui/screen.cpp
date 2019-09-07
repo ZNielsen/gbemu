@@ -35,9 +35,11 @@ const unordered_map<int, GameBoyInterface::JoyPadButton> Screen::BUTTON_MAP = {
 
 Screen::Screen(QQuickItem *parent)
     : QQuickPaintedItem(parent),
-      m_width(LCD_SCREEN_WIDTH),
-      m_height(LCD_SCREEN_HEIGHT),
-      m_canvas(m_width, m_height, QImage::Format_RGBA8888),
+      m_width(512),
+      m_height(256),
+      //m_width(LCD_SCREEN_WIDTH),
+      //m_height(LCD_SCREEN_HEIGHT),
+      m_canvas(m_width + 5, m_height, QImage::Format_RGBA8888),
       m_console(GameBoyInterface::Instance()),
       m_stopped(false)
 {
@@ -94,49 +96,26 @@ void Screen::paint(QPainter *painter)
 
 void Screen::onTimeout()
 {
+    static const int thickness = 5;
+    
     ColorArray rgb = m_console->getRGB();
     if (rgb.empty()) { return; }
     
     for (size_t i = 0; i < rgb.size(); i++) {
         shared_ptr<GB::RGB> color = rgb.at(i);
-
+        if (!color) { assert(0); continue; }
+        
         int x = i % m_width;
         int y = i / m_width;
+
+        if (x >= (m_width/2)) { x += thickness; }
         m_canvas.setPixel(x, y, qRgba(color->red, color->green, color->blue, color->alpha));
     }
 
+    for (int i = 0; i < m_height; i++) {
+        for (int j = 0; j < thickness; j++) {
+            m_canvas.setPixel(m_width/2 + j, i, qRgba(0, 0, 0, 0xFF));
+        }
+    }
     update();
 }
-
-#if 0
-QSGNode *Screen::updatePaintNode(QSGNode *oldNode, UpdatePaintNodeData *)
-{
-    QSGGeometryNode *root = static_cast<QSGGeometryNode*>(oldNode);
-    
-    if (!root) {
-        root = new QSGGeometryNode();
-        root->setFlag(QSGNode::OwnsMaterial, true);
-        root->setFlag(QSGNode::OwnsGeometry, true);
-    }
-
-    QSGGeometry *geometry = new QSGGeometry(QSGGeometry::defaultAttributes_ColoredPoint2D(), m_width * m_height);
-    QSGGeometry::ColoredPoint2D *points = geometry->vertexDataAsColoredPoint2D();
-
-    vector<GPU::RGB> rgb = m_console.getRGB();
-    for (size_t i = 0; i < rgb.size(); i++) {
-        const GPU::RGB & color = rgb.at(i);
-
-        int x = i % m_width;
-        int y = i / m_width;
-
-        points[i].set(x, y, color.red, color.green, color.blue, color.alpha);
-    }
-
-    root->setGeometry(geometry);
-
-    QSGVertexColorMaterial *material = new QSGVertexColorMaterial();
-    root->setMaterial(material);
- 
-    return root;
-}
-#endif
